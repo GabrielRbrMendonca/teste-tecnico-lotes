@@ -3,6 +3,7 @@ package com.empresa.lotes.service;
 import com.empresa.lotes.dto.DocumentoResponse;
 import com.empresa.lotes.dto.LoteRequest;
 import com.empresa.lotes.dto.LoteResponse;
+import com.empresa.lotes.dto.PageResponse;
 import com.empresa.lotes.exception.LoteNaoEncontradoException;
 import com.empresa.lotes.exception.TransicaoInvalidaException;
 import com.empresa.lotes.model.Documento;
@@ -10,6 +11,8 @@ import com.empresa.lotes.model.Lote;
 import com.empresa.lotes.model.StatusLote;
 import com.empresa.lotes.repository.LoteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import javax.validation.ConstraintViolation;
@@ -25,6 +28,28 @@ public class LoteService {
 
     @Autowired
     private LoteRepository repository;
+
+    public PageResponse listar(StatusLote status, String operador, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size);
+        Page<Lote> resultado;
+
+        if (status != null && operador != null) {
+            resultado = repository.findByStatusAndOperador(status, operador, pageable);
+        } else if (status != null) {
+            resultado = repository.findByStatus(status, pageable);
+        } else if (operador != null) {
+            resultado = repository.findByOperador(operador, pageable);
+        } else {
+            resultado = repository.findAll(pageable);
+        }
+
+        List<LoteResponse> content = resultado.getContent().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+
+        return new PageResponse(content, resultado.getTotalElements(),
+                resultado.getTotalPages(), page, size);
+    }
 
     public LoteResponse criar(LoteRequest req) {
         Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
